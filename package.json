@@ -1,0 +1,11 @@
+{
+  "name": "madhav-finance-manager",
+  "version": "1.0.0",
+  "description": "Personal and Family Finance Manager PWA",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "node --check js/app.js js/charts.js js/storage.js js/finance.js js/transactions.js js/budgets.js js/goals.js js/backup.js js/constants.js js/utils.js service-worker.js"
+  }
+}

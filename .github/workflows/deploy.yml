@@ -1,0 +1,93 @@
+name: CI & GitHub Pages Deployment
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Default to least-privilege permissions
+permissions:
+  contents: read
+
+# Ensure only one deployment executes at a time to prevent race conditions
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  # ==========================================================================
+  # JOB 1: Continuous Integration (Lint, Syntax Check, Automated Tests)
+  # ==========================================================================
+  ci:
+    name: Continuous Integration & Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: ${{ hashFiles('package-lock.json') != '' && 'npm' || '' }}
+
+      - name: Install Dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: Validate JavaScript Syntax
+        run: npm run check
+
+      - name: Run Complete Automated Test Suite
+        run: npm test
+
+  # ==========================================================================
+  # JOB 2: Deploy to GitHub Pages (Main branch pushes only)
+  # ==========================================================================
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: ci
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Stage Production Deployment Artifact
+        run: |
+          mkdir -p dist
+          cp index.html manifest.json service-worker.js dist/
+          cp -r css js assets dist/
+
+      - name: Upload GitHub Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
